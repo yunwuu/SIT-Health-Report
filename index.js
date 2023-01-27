@@ -8,6 +8,7 @@
 import fs from 'fs';
 import axios from 'axios';
 import crypto from 'crypto';
+import schedule from 'node-schedule';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -240,33 +241,53 @@ const Main = async function (uid) {
     return true;
 }
 
+const run = async () => {
+    if(!fs.existsSync('./config.json')) {
+        console.log('config.json not found');
+        process.exit(1);
+    }
 
-if(!fs.existsSync('./config.json')) {
-    console.log('config.json not found');
-    process.exit(1);
+    fs.readFile('./config.json', 'utf8', function (err, data) {
+        if (err) throw err;
+        const _users = JSON.parse(data);
+        if(!_users.users) {
+            console.log_('Users not found');
+            process.exit(1);
+        }
+        var uids = [];
+        Object.keys(_users["users"]).forEach((key) => {
+            uids.push(key);
+        })
+        uids.shuffle();
+        console.log_(uids);
+        uids.forEach(function(uid) {
+            Main(uid).then(res => {
+                if(res) {
+                    console.log_(`[${uid}] success`);
+                } else {
+                    console.log_(`[${uid}] failed`);
+                }
+            })
+        })
+    })
 }
 
 
-fs.readFile('./config.json', 'utf8', function (err, data) {
-    if (err) throw err;
-    const _users = JSON.parse(data);
-    if(!_users.users) {
-        console.log_('Users not found');
-        process.exit(1);
-    }
-    var uids = [];
-    Object.keys(_users["users"]).forEach((key) => {
-        uids.push(key);
-    })
-    uids.shuffle();
-    console.log_(uids);
-    uids.forEach(function(uid) {
-        Main(uid).then(res => {
-            if(res) {
-                console.log_(`[${uid}] success`);
-            } else {
-                console.log_(`[${uid}] failed`);
-            }
+const job = schedule.scheduleJob('0 * * * * *', function() {
+    if(process.env.heartbeat) {
+        axios({
+            url: process.env.heartbeat
+        }).then(data => {
+            console.log_(`[Heartbeat] ${data.data}`);
+        }).catch(err => {
+            console.log_('[Heartbeat] Failed')
         })
-    })
+    }
+    const t = new Date();
+    if(t.getHours() == 6) {
+        console.log_(`[Time ${t.getHours()}:00] run!`);
+        run();
+    } else {
+        console.log_(`[Time ${t.getHours()}:00] sleeping...`);
+    }
 })

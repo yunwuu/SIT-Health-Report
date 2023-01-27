@@ -273,7 +273,7 @@ const run = async () => {
 }
 
 
-const job = schedule.scheduleJob('0 * * * * *', function() {
+const job = schedule.scheduleJob('0 0 * * * *', function() {
     if(process.env.heartbeat) {
         axios({
             url: process.env.heartbeat
